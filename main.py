@@ -13,7 +13,7 @@ from update_manager import check_for_updates, download_and_install_update
 from utils import resource_path
 # from zip_utils import crack_zip_password
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 class UpdateCheckWorker(QObject):
     update_found = pyqtSignal(dict)
