@@ -118,6 +118,7 @@ def create_update_script(download_path):
     """
     script_content = f"""
 @echo off
+chcp 65001 > NUL
 echo "正在准备更新，请稍候..."
 timeout /t 5 /nobreak > NUL
 
