@@ -3,18 +3,30 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QPushButton, QLabel, QFileDialog, QGridLayout,
                              QMessageBox, QHBoxLayout, QFrame)
 from PyQt6.QtGui import QIcon, QFont, QPixmap
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, QSize, QObject, pyqtSignal, QThread
 
 from pdf_window import PDFWindow
 from image_window import ImageWindow
 from audio_window import AudioWindow
 from video_window import VideoWindow
 from update_manager import check_for_updates, download_and_install_update
-from threading import Thread
 from utils import resource_path
 # from zip_utils import crack_zip_password
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
+
+class UpdateCheckWorker(QObject):
+    update_found = pyqtSignal(dict)
+
+    def __init__(self, current_version):
+        super().__init__()
+        self.current_version = current_version
+
+    def run(self):
+        """Checks for updates and emits a signal if a new version is found."""
+        latest_release = check_for_updates(self.current_version)
+        if latest_release:
+            self.update_found.emit(latest_release)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -81,17 +93,22 @@ class MainWindow(QMainWindow):
         self.check_for_updates_on_startup()
 
     def check_for_updates_on_startup(self):
-        def check():
-            latest_release = check_for_updates(__version__)
-            if latest_release:
-                self.show_update_dialog(latest_release)
+        self.update_thread = QThread()
+        self.update_worker = UpdateCheckWorker(__version__)
+        self.update_worker.moveToThread(self.update_thread)
 
-        # 在后台线程中运行更新检查
-        update_thread = Thread(target=check, daemon=True)
-        update_thread.start()
+        self.update_thread.started.connect(self.update_worker.run)
+        self.update_worker.update_found.connect(self.show_update_dialog)
+        
+        # Clean up the thread when the worker is done
+        self.update_worker.update_found.connect(self.update_thread.quit)
+        self.update_thread.finished.connect(self.update_worker.deleteLater)
+        self.update_thread.finished.connect(self.update_thread.deleteLater)
+
+        self.update_thread.start()
 
     def show_update_dialog(self, release_info):
-        download_and_install_update(release_info)
+        download_and_install_update(release_info, self)
 
     def create_tool_button(self, title, description, icon_path, on_click):
         button = QPushButton()
