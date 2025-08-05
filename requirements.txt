@@ -1,0 +1,11 @@
+PyQt6
+PyMuPDF
+python-docx
+Pillow
+pydub
+moviepy
+tqdm
+pdf2docx
+pyinstaller
+requests
+semver

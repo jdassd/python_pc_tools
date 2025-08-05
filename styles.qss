@@ -1,0 +1,114 @@
+/* General Window Styling */
+QMainWindow {
+    background-color: #f0f2f5; /* Light gray background */
+}
+
+/* Header Frame */
+#headerFrame {
+    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #6a11cb, stop:1 #2575fc);
+    border-radius: 15px;
+    padding: 20px;
+}
+
+#titleLabel {
+    font-size: 32px;
+    font-weight: bold;
+    color: white;
+}
+
+#subtitleLabel {
+    font-size: 16px;
+    color: #e0e0e0;
+}
+
+/* Tool Buttons */
+#toolButton {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 15px;
+    padding: 20px;
+    min-height: 150px;
+}
+
+#toolButton:hover {
+    border-color: #6a11cb;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+}
+
+#toolTitle {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+#toolDesc {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Stats Frame */
+#statsFrame {
+    background-color: white;
+    border-radius: 15px;
+    padding: 15px;
+}
+
+#statCount {
+    font-size: 28px;
+    font-weight: bold;
+    color: #6a11cb;
+}
+
+#statText {
+    font-size: 14px;
+    color: #555;
+}
+
+/* General Label Styling */
+QLabel {
+    padding: 2px;
+}
+
+/* Sub-window styling */
+QGroupBox {
+    font-size: 16px;
+    font-weight: bold;
+    border: 1px solid #d0d0d0;
+    border-radius: 10px;
+    margin-top: 10px;
+    background-color: #ffffff;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top center;
+    padding: 0 10px;
+}
+
+QLineEdit {
+    border: 1px solid #ccc;
+    padding: 8px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+QLineEdit:focus {
+    border-color: #6a11cb;
+}
+
+QPushButton {
+    background-color: #6a11cb;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+QPushButton:hover {
+    background-color: #5a0fb1;
+}
+
+QPushButton:pressed {
+    background-color: #4a0d91;
+}
