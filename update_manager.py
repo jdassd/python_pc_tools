@@ -87,7 +87,7 @@ echo "清理临时文件..."
 del "{download_path}"
 
 echo "更新完成，正在重启应用..."
-start "" "main.exe"
+start "" "工具箱.exe"
 
 del "%~f0"
 """
