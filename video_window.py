@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLineEdit,
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal
 from video_utils import convert_video_format, cut_video, compress_video
+from utils import resource_path
 
 class VideoWindow(QWidget):
     operation_successful = pyqtSignal()
@@ -12,7 +13,7 @@ class VideoWindow(QWidget):
         super().__init__()
         self.setWindowTitle("视频工具")
         self.setGeometry(200, 200, 500, 600)
-        self.setWindowIcon(QIcon("工具箱.png"))
+        self.setWindowIcon(QIcon(resource_path("工具箱.png")))
 
         main_layout = QVBoxLayout(self)
 

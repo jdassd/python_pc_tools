@@ -23,7 +23,7 @@ __version__ = "1.1.0"
 
 -   在项目根目录下运行打包命令：
     ```bash
-    pyinstaller main.spec
+    python -m PyInstaller .\main.spec
     ```
 -   打包成功后，所有需要分发的文件将位于 `dist/main` 目录中。
 

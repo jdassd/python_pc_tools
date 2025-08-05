@@ -78,7 +78,7 @@ echo "正在准备更新，请稍候..."
 timeout /t 5 /nobreak > NUL
 
 echo "正在关闭当前应用..."
-taskkill /f /im main.exe > NUL
+taskkill /f /im 工具箱.exe > NUL
 
 echo "正在解压并替换文件..."
 tar -xf "{download_path}" -C "."

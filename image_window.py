@@ -5,6 +5,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal
 from image_utils import (convert_image_format, resize_image,
                          crop_image, add_watermark)
+from utils import resource_path
 
 class ImageWindow(QWidget):
     operation_successful = pyqtSignal()
@@ -13,7 +14,7 @@ class ImageWindow(QWidget):
         super().__init__()
         self.setWindowTitle("图片工具")
         self.setGeometry(200, 200, 500, 600)
-        self.setWindowIcon(QIcon("工具箱.png"))
+        self.setWindowIcon(QIcon(resource_path("工具箱.png")))
 
         main_layout = QVBoxLayout(self)
 

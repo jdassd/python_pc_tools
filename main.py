@@ -11,6 +11,7 @@ from audio_window import AudioWindow
 from video_window import VideoWindow
 from update_manager import check_for_updates, download_and_install_update
 from threading import Thread
+from utils import resource_path
 # from zip_utils import crack_zip_password
 
 __version__ = "1.0.0"
@@ -20,7 +21,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"多功能工具箱 v{__version__}")
         self.setGeometry(100, 100, 800, 600)
-        self.setWindowIcon(QIcon('工具箱.png'))
+        self.setWindowIcon(QIcon(resource_path('工具箱.png')))
 
         self.pdf_count = 0
         self.image_count = 0
@@ -53,10 +54,10 @@ class MainWindow(QMainWindow):
         tools_grid.setSpacing(20)
         main_layout.addLayout(tools_grid)
 
-        tools_grid.addWidget(self.create_tool_button("PDF工具", "PDF转Word、合并、分割、\n压缩等操作", "pdf.png", self.open_pdf_tools), 0, 0)
-        tools_grid.addWidget(self.create_tool_button("图片工具", "图片格式转换、压缩、裁剪、\n水印等", "图片.png", self.open_image_tools), 0, 1)
-        tools_grid.addWidget(self.create_tool_button("音频工具", "音频格式转换、剪辑、音量\n调节等", "音乐.png", self.open_audio_tools), 1, 0)
-        tools_grid.addWidget(self.create_tool_button("视频工具", "视频格式转换、剪辑、压缩\n等操作", "视频.png", self.open_video_tools), 1, 1)
+        tools_grid.addWidget(self.create_tool_button("PDF工具", "PDF转Word、合并、分割、\n压缩等操作", resource_path("pdf.png"), self.open_pdf_tools), 0, 0)
+        tools_grid.addWidget(self.create_tool_button("图片工具", "图片格式转换、压缩、裁剪、\n水印等", resource_path("图片.png"), self.open_image_tools), 0, 1)
+        tools_grid.addWidget(self.create_tool_button("音频工具", "音频格式转换、剪辑、音量\n调节等", resource_path("音乐.png"), self.open_audio_tools), 1, 0)
+        tools_grid.addWidget(self.create_tool_button("视频工具", "视频格式转换、剪辑、压缩\n等操作", resource_path("视频.png"), self.open_video_tools), 1, 1)
 
         # Stats
         stats_frame = QFrame()
@@ -184,7 +185,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    with open("styles.qss", "r") as f:
+    with open(resource_path("styles.qss"), "r") as f:
         app.setStyleSheet(f.read())
     window = MainWindow()
     window.show()

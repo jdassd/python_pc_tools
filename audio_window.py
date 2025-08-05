@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLineEdit,
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt, pyqtSignal
 from audio_utils import convert_audio_format, cut_audio, adjust_volume
+from utils import resource_path
 
 class AudioWindow(QWidget):
     operation_successful = pyqtSignal()
@@ -12,7 +13,7 @@ class AudioWindow(QWidget):
         super().__init__()
         self.setWindowTitle("音频工具")
         self.setGeometry(200, 200, 500, 600)
-        self.setWindowIcon(QIcon("工具箱.png"))
+        self.setWindowIcon(QIcon(resource_path("工具箱.png")))
 
         main_layout = QVBoxLayout(self)
 

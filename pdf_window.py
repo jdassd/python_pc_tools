@@ -4,6 +4,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal
 
 from pdf_utils import pdf_to_images, merge_pdfs, split_pdf, pdf_to_word
+from utils import resource_path
 
 class PDFWindow(QWidget):
     operation_successful = pyqtSignal()
@@ -12,7 +13,7 @@ class PDFWindow(QWidget):
         super().__init__()
         self.setWindowTitle("PDF 工具")
         self.setGeometry(200, 200, 500, 600)
-        self.setWindowIcon(QIcon("工具箱.png"))
+        self.setWindowIcon(QIcon(resource_path("工具箱.png")))
 
         main_layout = QVBoxLayout(self)
 
