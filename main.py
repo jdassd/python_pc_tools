@@ -14,7 +14,7 @@ from threading import Thread
 from utils import resource_path
 # from zip_utils import crack_zip_password
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 class MainWindow(QMainWindow):
     def __init__(self):
