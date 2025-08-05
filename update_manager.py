@@ -5,7 +5,7 @@ import subprocess
 from PyQt6.QtWidgets import QMessageBox, QProgressDialog
 from PyQt6.QtCore import Qt
 
-GITHUB_REPO = "user/repo"  # 需要替换为实际的仓库地址
+GITHUB_REPO = "jdassd/python_pc_tools"  # 需要替换为实际的仓库地址
 
 def check_for_updates(current_version):
     """
