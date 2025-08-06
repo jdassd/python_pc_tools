@@ -18,7 +18,7 @@ from utils import resource_path
 from data_manager import DataManager
 # from zip_utils import crack_zip_password
 
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 
 class AdaptiveToolButton(QPushButton):
     def __init__(self, title, description, icon_path, parent=None):
