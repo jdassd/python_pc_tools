@@ -90,7 +90,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"多功能工具箱 v{__version__}")
-        self.setMinimumSize(600, 500) # 设置一个合理的最小尺寸
+        self.setMinimumSize(600, 620) # 设置一个合理的最小尺寸
         self.setWindowIcon(QIcon(resource_path('工具箱.png')))
 
         # 初始化数据管理器
