@@ -1,7 +1,7 @@
 import sys
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QPushButton, QLabel, QFileDialog, QGridLayout,
-                             QMessageBox, QHBoxLayout, QFrame)
+                             QMessageBox, QHBoxLayout, QFrame, QSizePolicy)
 from PyQt6.QtGui import QIcon, QFont, QPixmap
 from PyQt6.QtCore import Qt, QSize, QObject, pyqtSignal, QThread
 
@@ -9,11 +9,65 @@ from pdf_window import PDFWindow
 from image_window import ImageWindow
 from audio_window import AudioWindow
 from video_window import VideoWindow
+from mouse_window import MouseWindow
 from update_manager import check_for_updates, download_and_install_update
 from utils import resource_path
 # from zip_utils import crack_zip_password
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
+
+class AdaptiveToolButton(QPushButton):
+    def __init__(self, title, description, icon_path, parent=None):
+        super().__init__(parent)
+        self.setObjectName("toolButton")
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.icon_path = icon_path
+        self.title_text = title
+        self.description_text = description
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.icon_label = QLabel()
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.title_label = QLabel(self.title_text)
+        self.title_label.setObjectName("toolTitle")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.desc_label = QLabel(self.description_text)
+        self.desc_label.setObjectName("toolDesc")
+        self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.desc_label.setWordWrap(True)
+
+        layout.addWidget(self.icon_label, 2)
+        layout.addWidget(self.title_label, 1)
+        layout.addWidget(self.desc_label, 1)
+
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        
+        button_height = self.height()
+        
+        # --- Icon Resizing ---
+        icon_size = int(button_height * 0.3) # Icon takes up 30% of the button height
+        pixmap = QPixmap(self.icon_path)
+        self.icon_label.setPixmap(pixmap.scaled(QSize(icon_size, icon_size), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+        # --- Font Resizing ---
+        title_font_size = max(int(button_height * 0.12), 8) # Title font size is 12% of height, min 8px
+        desc_font_size = max(int(button_height * 0.09), 8) # Desc font size is 9% of height, min 8px
+
+        title_font = self.title_label.font()
+        title_font.setPixelSize(title_font_size)
+        self.title_label.setFont(title_font)
+
+        desc_font = self.desc_label.font()
+        desc_font.setPixelSize(desc_font_size)
+        self.desc_label.setFont(desc_font)
 
 class UpdateCheckWorker(QObject):
     update_found = pyqtSignal(dict)
@@ -32,13 +86,14 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"多功能工具箱 v{__version__}")
-        self.setGeometry(100, 100, 800, 600)
+        self.setMinimumSize(600, 500) # 设置一个合理的最小尺寸
         self.setWindowIcon(QIcon(resource_path('工具箱.png')))
 
         self.pdf_count = 0
         self.image_count = 0
         self.audio_count = 0
         self.video_count = 0
+        self.mouse_count = 0
 
         # Main widget and layout
         main_widget = QWidget()
@@ -62,14 +117,11 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(header_frame)
 
         # Tools Grid
-        tools_grid = QGridLayout()
-        tools_grid.setSpacing(20)
-        main_layout.addLayout(tools_grid)
+        self.tools_grid = QGridLayout()
+        self.tools_grid.setSpacing(20)
+        main_layout.addLayout(self.tools_grid, 1)
 
-        tools_grid.addWidget(self.create_tool_button("PDF工具", "PDF转Word、合并、分割、\n压缩等操作", resource_path("pdf.png"), self.open_pdf_tools), 0, 0)
-        tools_grid.addWidget(self.create_tool_button("图片工具", "图片格式转换、压缩、裁剪、\n水印等", resource_path("图片.png"), self.open_image_tools), 0, 1)
-        tools_grid.addWidget(self.create_tool_button("音频工具", "音频格式转换、剪辑、音量\n调节等", resource_path("音乐.png"), self.open_audio_tools), 1, 0)
-        tools_grid.addWidget(self.create_tool_button("视频工具", "视频格式转换、剪辑、压缩\n等操作", resource_path("视频.png"), self.open_video_tools), 1, 1)
+        self.setup_tools_grid()
 
         # Stats
         stats_frame = QFrame()
@@ -82,15 +134,46 @@ class MainWindow(QMainWindow):
         self.image_count_widget = self.create_stat_label("0", "图片处理次数")
         self.audio_count_widget = self.create_stat_label("0", "音频处理次数")
         self.video_count_widget = self.create_stat_label("0", "视频处理次数")
+        self.mouse_count_widget = self.create_stat_label("0", "鼠标点击次数")
 
         stats_layout.addWidget(self.pdf_count_widget)
         stats_layout.addWidget(self.image_count_widget)
         stats_layout.addWidget(self.audio_count_widget)
         stats_layout.addWidget(self.video_count_widget)
+        stats_layout.addWidget(self.mouse_count_widget)
 
         main_layout.addStretch()
 
         self.check_for_updates_on_startup()
+
+    def setup_tools_grid(self):
+        tools = [
+            ("PDF工具", "PDF转Word、合并、分割、\n压缩等操作", resource_path("pdf.png"), self.open_pdf_tools),
+            ("图片工具", "图片格式转换、压缩、裁剪、\n水印等", resource_path("图片.png"), self.open_image_tools),
+            ("音频工具", "音频格式转换、剪辑、音量\n调节等", resource_path("音乐.png"), self.open_audio_tools),
+            ("视频工具", "视频格式转换、剪辑、压缩\n等操作", resource_path("视频.png"), self.open_video_tools),
+            ("鼠标工具", "模拟鼠标点击，支持\n自定义坐标和频率", resource_path("鼠标.png"), self.open_mouse_tools)
+        ]
+
+        # Clear existing widgets
+        for i in reversed(range(self.tools_grid.count())):
+            self.tools_grid.itemAt(i).widget().setParent(None)
+
+        num_tools = len(tools)
+        max_rows = 2
+        num_columns = (num_tools + max_rows - 1) // max_rows
+
+        for i in range(num_columns):
+            self.tools_grid.setColumnStretch(i, 1)
+        for i in range(max_rows):
+            self.tools_grid.setRowStretch(i, 1)
+
+        for idx, (title, desc, icon, callback) in enumerate(tools):
+            row = idx % max_rows
+            col = idx // max_rows
+            button = self.create_tool_button(title, desc, icon, callback)
+            self.tools_grid.addWidget(button, row, col)
+
 
     def check_for_updates_on_startup(self):
         self.update_thread = QThread()
@@ -111,30 +194,7 @@ class MainWindow(QMainWindow):
         download_and_install_update(release_info, self)
 
     def create_tool_button(self, title, description, icon_path, on_click):
-        button = QPushButton()
-        button.setObjectName("toolButton")
-        button_layout = QVBoxLayout(button)
-        
-        icon_label = QLabel()
-        pixmap = QPixmap(icon_path)
-        icon_label.setPixmap(pixmap.scaled(QSize(48, 48), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        title_label = QLabel(title)
-        title_label.setObjectName("toolTitle")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        desc_label = QLabel(description)
-        desc_label.setObjectName("toolDesc")
-        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        button_layout.addWidget(icon_label)
-        button_layout.addWidget(title_label)
-        button_layout.addWidget(desc_label)
-        button_layout.setStretch(0, 1)
-        button_layout.setStretch(1, 0)
-        button_layout.setStretch(2, 0)
-
+        button = AdaptiveToolButton(title, description, icon_path)
         button.clicked.connect(on_click)
         return button
 
@@ -175,6 +235,11 @@ class MainWindow(QMainWindow):
         self.video_window.operation_successful.connect(self.increment_video_count)
         self.video_window.show()
 
+    def open_mouse_tools(self):
+       self.mouse_window = MouseWindow()
+       # self.mouse_window.operation_successful.connect(self.increment_mouse_count)
+       self.mouse_window.show()
+
     def increment_pdf_count(self):
         self.pdf_count += 1
         self.pdf_count_widget.findChild(QLabel, "statCount").setText(str(self.pdf_count))
@@ -190,6 +255,10 @@ class MainWindow(QMainWindow):
     def increment_video_count(self):
         self.video_count += 1
         self.video_count_widget.findChild(QLabel, "statCount").setText(str(self.video_count))
+
+    def increment_mouse_count(self):
+       self.mouse_count += 1
+       self.mouse_count_widget.findChild(QLabel, "statCount").setText(str(self.mouse_count))
 
     def show_message(self, message, title="提示"):
         msg_box = QMessageBox(self)

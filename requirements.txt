@@ -9,3 +9,4 @@ pdf2docx
 pyinstaller
 requests
 semver
+pynput

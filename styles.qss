@@ -27,7 +27,6 @@ QMainWindow {
     border: 1px solid #e0e0e0;
     border-radius: 15px;
     padding: 20px;
-    min-height: 150px;
 }
 
 #toolButton:hover {
@@ -36,13 +35,11 @@ QMainWindow {
 }
 
 #toolTitle {
-    font-size: 20px;
     font-weight: bold;
     color: #333;
 }
 
 #toolDesc {
-    font-size: 14px;
     color: #666;
 }
 
