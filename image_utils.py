@@ -1,4 +1,7 @@
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps, ImageFilter
+from PIL.ExifTags import TAGS
+import os
+import time
 
 def convert_image_format(input_path, output_path, format):
     """Converts an image to a different format."""
@@ -48,3 +51,256 @@ def add_watermark(input_path, output_path, text, position, font_path=None, font_
         return f"Successfully added watermark to {input_path}"
     except Exception as e:
         return f"Error adding watermark: {e}"
+
+# 新增功能
+
+def get_image_exif(image_path):
+    """获取图片EXIF信息"""
+    try:
+        img = Image.open(image_path)
+        exifdata = img.getexif()
+        
+        if not exifdata:
+            return {"message": "该图片没有EXIF信息"}, None
+        
+        exif_dict = {}
+        for tag_id, value in exifdata.items():
+            tag = TAGS.get(tag_id, tag_id)
+            exif_dict[tag] = str(value)
+        
+        # 添加基本图片信息
+        basic_info = {
+            "文件名": os.path.basename(image_path),
+            "图片格式": img.format,
+            "图片模式": img.mode,
+            "图片尺寸": f"{img.width} x {img.height}",
+            "文件大小": f"{os.path.getsize(image_path)} bytes"
+        }
+        
+        return {"basic_info": basic_info, "exif_data": exif_dict}, None
+        
+    except Exception as e:
+        return None, str(e)
+
+def batch_rename_images(directory, name_pattern="IMG", use_creation_time=False):
+    """批量重命名图片文件"""
+    try:
+        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
+        image_files = []
+        
+        # 获取所有图片文件
+        for filename in os.listdir(directory):
+            if any(filename.lower().endswith(ext) for ext in image_extensions):
+                file_path = os.path.join(directory, filename)
+                if use_creation_time:
+                    # 使用创建时间排序
+                    creation_time = os.path.getctime(file_path)
+                    image_files.append((filename, file_path, creation_time))
+                else:
+                    image_files.append((filename, file_path, filename.lower()))
+        
+        # 排序
+        if use_creation_time:
+            image_files.sort(key=lambda x: x[2])  # 按创建时间排序
+        else:
+            image_files.sort(key=lambda x: x[2])  # 按文件名排序
+        
+        renamed_files = []
+        errors = []
+        
+        for i, (old_name, file_path, _) in enumerate(image_files, 1):
+            _, ext = os.path.splitext(old_name)
+            new_name = f"{name_pattern}_{i:04d}{ext}"
+            new_path = os.path.join(directory, new_name)
+            
+            if os.path.exists(new_path):
+                errors.append(f"{old_name}: 目标文件已存在")
+                continue
+            
+            try:
+                os.rename(file_path, new_path)
+                renamed_files.append((old_name, new_name))
+            except Exception as e:
+                errors.append(f"{old_name}: {str(e)}")
+        
+        return {"renamed": renamed_files, "errors": errors}, None
+        
+    except Exception as e:
+        return None, str(e)
+
+def rotate_flip_image(input_path, output_path, operation):
+    """旋转或翻转图片"""
+    try:
+        img = Image.open(input_path)
+        
+        if operation == "rotate_90":
+            result_img = img.rotate(90, expand=True)
+        elif operation == "rotate_180":
+            result_img = img.rotate(180)
+        elif operation == "rotate_270":
+            result_img = img.rotate(270, expand=True)
+        elif operation == "flip_horizontal":
+            result_img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        elif operation == "flip_vertical":
+            result_img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        else:
+            return None, f"不支持的操作: {operation}"
+        
+        result_img.save(output_path)
+        return f"成功{operation}图片: {input_path}", None
+        
+    except Exception as e:
+        return None, str(e)
+
+def concat_images(image_paths, output_path, direction="horizontal", spacing=0):
+    """拼接图片"""
+    try:
+        images = [Image.open(path) for path in image_paths]
+        
+        if direction == "horizontal":
+            # 水平拼接
+            total_width = sum(img.width for img in images) + spacing * (len(images) - 1)
+            max_height = max(img.height for img in images)
+            
+            result = Image.new('RGB', (total_width, max_height), (255, 255, 255))
+            
+            x_offset = 0
+            for img in images:
+                result.paste(img, (x_offset, 0))
+                x_offset += img.width + spacing
+                
+        else:  # vertical
+            # 垂直拼接
+            max_width = max(img.width for img in images)
+            total_height = sum(img.height for img in images) + spacing * (len(images) - 1)
+            
+            result = Image.new('RGB', (max_width, total_height), (255, 255, 255))
+            
+            y_offset = 0
+            for img in images:
+                result.paste(img, (0, y_offset))
+                y_offset += img.height + spacing
+        
+        result.save(output_path)
+        return f"成功拼接{len(images)}张图片", None
+        
+    except Exception as e:
+        return None, str(e)
+
+def adjust_image_properties(input_path, output_path, brightness=1.0, contrast=1.0, saturation=1.0, sharpness=1.0):
+    """调整图片属性"""
+    try:
+        img = Image.open(input_path)
+        
+        # 调整亮度
+        if brightness != 1.0:
+            enhancer = ImageEnhance.Brightness(img)
+            img = enhancer.enhance(brightness)
+        
+        # 调整对比度
+        if contrast != 1.0:
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(contrast)
+        
+        # 调整饱和度
+        if saturation != 1.0:
+            enhancer = ImageEnhance.Color(img)
+            img = enhancer.enhance(saturation)
+        
+        # 调整锐度
+        if sharpness != 1.0:
+            enhancer = ImageEnhance.Sharpness(img)
+            img = enhancer.enhance(sharpness)
+        
+        img.save(output_path)
+        return f"成功调整图片属性: {input_path}", None
+        
+    except Exception as e:
+        return None, str(e)
+
+def apply_image_filter(input_path, output_path, filter_type):
+    """应用图片滤镜"""
+    try:
+        img = Image.open(input_path)
+        
+        if filter_type == "blur":
+            result_img = img.filter(ImageFilter.BLUR)
+        elif filter_type == "detail":
+            result_img = img.filter(ImageFilter.DETAIL)
+        elif filter_type == "edge_enhance":
+            result_img = img.filter(ImageFilter.EDGE_ENHANCE)
+        elif filter_type == "emboss":
+            result_img = img.filter(ImageFilter.EMBOSS)
+        elif filter_type == "find_edges":
+            result_img = img.filter(ImageFilter.FIND_EDGES)
+        elif filter_type == "smooth":
+            result_img = img.filter(ImageFilter.SMOOTH)
+        elif filter_type == "sharpen":
+            result_img = img.filter(ImageFilter.SHARPEN)
+        elif filter_type == "grayscale":
+            result_img = img.convert('L')
+        elif filter_type == "invert":
+            result_img = ImageOps.invert(img)
+        else:
+            return None, f"不支持的滤镜类型: {filter_type}"
+        
+        result_img.save(output_path)
+        return f"成功应用{filter_type}滤镜", None
+        
+    except Exception as e:
+        return None, str(e)
+
+def batch_process_images(directory, operation, **kwargs):
+    """批量处理图片"""
+    try:
+        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp']
+        processed_files = []
+        errors = []
+        
+        for filename in os.listdir(directory):
+            if any(filename.lower().endswith(ext) for ext in image_extensions):
+                input_path = os.path.join(directory, filename)
+                name, ext = os.path.splitext(filename)
+                output_filename = f"{name}_{operation}{ext}"
+                output_path = os.path.join(directory, output_filename)
+                
+                try:
+                    if operation == "compress":
+                        # 压缩图片
+                        img = Image.open(input_path)
+                        quality = kwargs.get('quality', 85)
+                        img.save(output_path, optimize=True, quality=quality)
+                        processed_files.append((filename, output_filename))
+                        
+                    elif operation == "resize":
+                        # 批量调整大小
+                        size = kwargs.get('size', (800, 600))
+                        result, error = resize_image(input_path, output_path, size)
+                        if error:
+                            errors.append(f"{filename}: {error}")
+                        else:
+                            processed_files.append((filename, output_filename))
+                            
+                    elif operation in ["rotate_90", "rotate_180", "rotate_270", "flip_horizontal", "flip_vertical"]:
+                        # 批量旋转翻转
+                        result, error = rotate_flip_image(input_path, output_path, operation)
+                        if error:
+                            errors.append(f"{filename}: {error}")
+                        else:
+                            processed_files.append((filename, output_filename))
+                            
+                    elif operation in ["blur", "detail", "edge_enhance", "emboss", "find_edges", "smooth", "sharpen", "grayscale", "invert"]:
+                        # 批量应用滤镜
+                        result, error = apply_image_filter(input_path, output_path, operation)
+                        if error:
+                            errors.append(f"{filename}: {error}")
+                        else:
+                            processed_files.append((filename, output_filename))
+                    
+                except Exception as e:
+                    errors.append(f"{filename}: {str(e)}")
+        
+        return {"processed": processed_files, "errors": errors}, None
+        
+    except Exception as e:
+        return None, str(e)

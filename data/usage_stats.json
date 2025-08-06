@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "tools": {
+    "pdf_count": 0,
+    "image_count": 0,
+    "audio_count": 0,
+    "video_count": 0,
+    "mouse_count": 0,
+    "text_count": 0,
+    "system_count": 1,
+    "network_count": 0
+  },
+  "metadata": {
+    "created_at": "2025-08-06T15:30:56.581673",
+    "last_updated": "2025-08-06T15:31:04.250136"
+  }
+}

@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('鼠标.png', '.'), ('pdf.png', '.'), ('styles.qss', '.'), ('工具箱.png', '.'), ('视频.png', '.'), ('图片.png', '.'), ('音乐.png', '.')],
+    datas=[('系统.png', '.'), ('网络.png', '.'), ('文本.png', '.'), ('鼠标.png', '.'), ('pdf.png', '.'), ('styles.qss', '.'), ('工具箱.png', '.'), ('视频.png', '.'), ('图片.png', '.'), ('音乐.png', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

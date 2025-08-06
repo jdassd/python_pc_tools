@@ -10,11 +10,15 @@ from image_window import ImageWindow
 from audio_window import AudioWindow
 from video_window import VideoWindow
 from mouse_window import MouseWindow
+from text_window import TextWindow
+from system_window import SystemWindow
+from network_window import NetworkWindow
 from update_manager import check_for_updates, download_and_install_update
 from utils import resource_path
+from data_manager import DataManager
 # from zip_utils import crack_zip_password
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 class AdaptiveToolButton(QPushButton):
     def __init__(self, title, description, icon_path, parent=None):
@@ -89,11 +93,19 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(600, 500) # 设置一个合理的最小尺寸
         self.setWindowIcon(QIcon(resource_path('工具箱.png')))
 
-        self.pdf_count = 0
-        self.image_count = 0
-        self.audio_count = 0
-        self.video_count = 0
-        self.mouse_count = 0
+        # 初始化数据管理器
+        self.data_manager = DataManager()
+        
+        # 从持久化存储加载使用次数
+        counts = self.data_manager.get_all_counts()
+        self.pdf_count = counts.get('pdf_count', 0)
+        self.image_count = counts.get('image_count', 0)
+        self.audio_count = counts.get('audio_count', 0)
+        self.video_count = counts.get('video_count', 0)
+        self.mouse_count = counts.get('mouse_count', 0)
+        self.text_count = counts.get('text_count', 0)
+        self.system_count = counts.get('system_count', 0)
+        self.network_count = counts.get('network_count', 0)
 
         # Main widget and layout
         main_widget = QWidget()
@@ -130,17 +142,23 @@ class MainWindow(QMainWindow):
         stats_layout.setSpacing(20)
         main_layout.addWidget(stats_frame)
 
-        self.pdf_count_widget = self.create_stat_label("0", "PDF处理次数")
-        self.image_count_widget = self.create_stat_label("0", "图片处理次数")
-        self.audio_count_widget = self.create_stat_label("0", "音频处理次数")
-        self.video_count_widget = self.create_stat_label("0", "视频处理次数")
-        self.mouse_count_widget = self.create_stat_label("0", "鼠标点击次数")
+        self.pdf_count_widget = self.create_stat_label(str(self.pdf_count), "PDF处理次数")
+        self.image_count_widget = self.create_stat_label(str(self.image_count), "图片处理次数")
+        self.audio_count_widget = self.create_stat_label(str(self.audio_count), "音频处理次数")
+        self.video_count_widget = self.create_stat_label(str(self.video_count), "视频处理次数")
+        self.mouse_count_widget = self.create_stat_label(str(self.mouse_count), "鼠标点击次数")
+        self.text_count_widget = self.create_stat_label(str(self.text_count), "文本处理次数")
+        self.system_count_widget = self.create_stat_label(str(self.system_count), "系统工具次数")
+        self.network_count_widget = self.create_stat_label(str(self.network_count), "网络工具次数")
 
         stats_layout.addWidget(self.pdf_count_widget)
         stats_layout.addWidget(self.image_count_widget)
         stats_layout.addWidget(self.audio_count_widget)
         stats_layout.addWidget(self.video_count_widget)
         stats_layout.addWidget(self.mouse_count_widget)
+        stats_layout.addWidget(self.text_count_widget)
+        stats_layout.addWidget(self.system_count_widget)
+        stats_layout.addWidget(self.network_count_widget)
 
         main_layout.addStretch()
 
@@ -152,7 +170,10 @@ class MainWindow(QMainWindow):
             ("图片工具", "图片格式转换、压缩、裁剪、\n水印等", resource_path("图片.png"), self.open_image_tools),
             ("音频工具", "音频格式转换、剪辑、音量\n调节等", resource_path("音乐.png"), self.open_audio_tools),
             ("视频工具", "视频格式转换、剪辑、压缩\n等操作", resource_path("视频.png"), self.open_video_tools),
-            ("鼠标工具", "模拟鼠标点击，支持\n自定义坐标和频率", resource_path("鼠标.png"), self.open_mouse_tools)
+            ("鼠标工具", "模拟鼠标点击，支持\n自定义坐标和频率", resource_path("鼠标.png"), self.open_mouse_tools),
+            ("文本工具", "文本编码转换、查找替换、\n分割合并、统计分析", resource_path("文本.png"), self.open_text_tools),
+            ("系统工具", "文件重命名、重复文件查找、\n目录比较、系统清理", resource_path("系统.png"), self.open_system_tools),
+            ("网络工具", "二维码生成、URL测试、\n端口扫描、HTTP服务器", resource_path("网络.png"), self.open_network_tools)
         ]
 
         # Clear existing widgets
@@ -160,8 +181,8 @@ class MainWindow(QMainWindow):
             self.tools_grid.itemAt(i).widget().setParent(None)
 
         num_tools = len(tools)
-        max_rows = 2
-        num_columns = (num_tools + max_rows - 1) // max_rows
+        max_rows = 2  # 保持原本的2行设计
+        num_columns = (num_tools + max_rows - 1) // max_rows  # 向上取整计算需要的列数
 
         for i in range(num_columns):
             self.tools_grid.setColumnStretch(i, 1)
@@ -236,29 +257,56 @@ class MainWindow(QMainWindow):
         self.video_window.show()
 
     def open_mouse_tools(self):
-       self.mouse_window = MouseWindow()
-       # self.mouse_window.operation_successful.connect(self.increment_mouse_count)
-       self.mouse_window.show()
+        self.mouse_window = MouseWindow()
+        self.mouse_window.operation_successful.connect(self.increment_mouse_count)
+        self.mouse_window.show()
 
     def increment_pdf_count(self):
-        self.pdf_count += 1
+        self.pdf_count = self.data_manager.increment_tool_count('pdf_count')
         self.pdf_count_widget.findChild(QLabel, "statCount").setText(str(self.pdf_count))
 
     def increment_image_count(self):
-        self.image_count += 1
+        self.image_count = self.data_manager.increment_tool_count('image_count')
         self.image_count_widget.findChild(QLabel, "statCount").setText(str(self.image_count))
 
     def increment_audio_count(self):
-        self.audio_count += 1
+        self.audio_count = self.data_manager.increment_tool_count('audio_count')
         self.audio_count_widget.findChild(QLabel, "statCount").setText(str(self.audio_count))
 
     def increment_video_count(self):
-        self.video_count += 1
+        self.video_count = self.data_manager.increment_tool_count('video_count')
         self.video_count_widget.findChild(QLabel, "statCount").setText(str(self.video_count))
 
+    def open_text_tools(self):
+        self.text_window = TextWindow()
+        self.text_window.operation_successful.connect(self.increment_text_count)
+        self.text_window.show()
+
+    def open_system_tools(self):
+        self.system_window = SystemWindow()
+        self.system_window.operation_successful.connect(self.increment_system_count)
+        self.system_window.show()
+
+    def open_network_tools(self):
+        self.network_window = NetworkWindow()
+        self.network_window.operation_successful.connect(self.increment_network_count)
+        self.network_window.show()
+
+    def increment_text_count(self):
+        self.text_count = self.data_manager.increment_tool_count('text_count')
+        self.text_count_widget.findChild(QLabel, "statCount").setText(str(self.text_count))
+
+    def increment_system_count(self):
+        self.system_count = self.data_manager.increment_tool_count('system_count')
+        self.system_count_widget.findChild(QLabel, "statCount").setText(str(self.system_count))
+
+    def increment_network_count(self):
+        self.network_count = self.data_manager.increment_tool_count('network_count')
+        self.network_count_widget.findChild(QLabel, "statCount").setText(str(self.network_count))
+
     def increment_mouse_count(self):
-       self.mouse_count += 1
-       self.mouse_count_widget.findChild(QLabel, "statCount").setText(str(self.mouse_count))
+        self.mouse_count = self.data_manager.increment_tool_count('mouse_count')
+        self.mouse_count_widget.findChild(QLabel, "statCount").setText(str(self.mouse_count))
 
     def show_message(self, message, title="提示"):
         msg_box = QMessageBox(self)

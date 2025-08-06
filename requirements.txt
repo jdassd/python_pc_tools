@@ -10,3 +10,5 @@ pyinstaller
 requests
 semver
 pynput
+qrcode[pil]
+psutil
