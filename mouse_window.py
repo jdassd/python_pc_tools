@@ -11,6 +11,7 @@ import sys
 
 class MouseWindow(QWidget):
     update_status_signal = pyqtSignal(str)
+    operation_successful = pyqtSignal()
 
     def __init__(self):
         super().__init__()
