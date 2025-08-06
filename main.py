@@ -13,12 +13,17 @@ from mouse_window import MouseWindow
 from text_window import TextWindow
 from system_window import SystemWindow
 from network_window import NetworkWindow
+from crypto_window import CryptoWindow
+from dev_window import DevWindow
+from office_window import OfficeWindow
+from media_window import MediaWindow
+from data_window import DataWindow
 from update_manager import check_for_updates, download_and_install_update
 from utils import resource_path
 from data_manager import DataManager
 # from zip_utils import crack_zip_password
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 
 class AdaptiveToolButton(QPushButton):
     def __init__(self, title, description, icon_path, parent=None):
@@ -106,6 +111,11 @@ class MainWindow(QMainWindow):
         self.text_count = counts.get('text_count', 0)
         self.system_count = counts.get('system_count', 0)
         self.network_count = counts.get('network_count', 0)
+        self.crypto_count = counts.get('crypto_count', 0)
+        self.dev_count = counts.get('dev_count', 0)
+        self.office_count = counts.get('office_count', 0)
+        self.media_count = counts.get('media_count', 0)
+        self.data_count = counts.get('data_count', 0)
 
         # Main widget and layout
         main_widget = QWidget()
@@ -121,7 +131,7 @@ class MainWindow(QMainWindow):
         title_label = QLabel("多功能工具箱")
         title_label.setObjectName("titleLabel")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle_label = QLabel("一站式文件处理工具, 支持PDF、图片、音频、视频格式转换和编辑")
+        subtitle_label = QLabel("多功能工具箱, 提供文件处理、加密解密、开发工具、数据分析等全方位功能")
         subtitle_label.setObjectName("subtitleLabel")
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(title_label)
@@ -150,7 +160,24 @@ class MainWindow(QMainWindow):
         self.text_count_widget = self.create_stat_label(str(self.text_count), "文本处理次数")
         self.system_count_widget = self.create_stat_label(str(self.system_count), "系统工具次数")
         self.network_count_widget = self.create_stat_label(str(self.network_count), "网络工具次数")
+        self.crypto_count_widget = self.create_stat_label(str(getattr(self, 'crypto_count', 0)), "加密解密次数")
+        self.dev_count_widget = self.create_stat_label(str(getattr(self, 'dev_count', 0)), "开发工具次数")
+        self.office_count_widget = self.create_stat_label(str(getattr(self, 'office_count', 0)), "办公效率次数")
+        self.media_count_widget = self.create_stat_label(str(getattr(self, 'media_count', 0)), "媒体增强次数")
+        self.data_count_widget = self.create_stat_label(str(getattr(self, 'data_count', 0)), "数据分析次数")
 
+        # 使用滚动区域来显示所有统计
+        from PyQt6.QtWidgets import QScrollArea
+        stats_scroll = QScrollArea()
+        stats_scroll.setWidgetResizable(True)
+        stats_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        stats_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        stats_scroll.setMaximumHeight(60)
+        
+        stats_container = QWidget()
+        stats_scroll.setWidget(stats_container)
+        stats_layout = QHBoxLayout(stats_container)
+        
         stats_layout.addWidget(self.pdf_count_widget)
         stats_layout.addWidget(self.image_count_widget)
         stats_layout.addWidget(self.audio_count_widget)
@@ -159,6 +186,13 @@ class MainWindow(QMainWindow):
         stats_layout.addWidget(self.text_count_widget)
         stats_layout.addWidget(self.system_count_widget)
         stats_layout.addWidget(self.network_count_widget)
+        stats_layout.addWidget(self.crypto_count_widget)
+        stats_layout.addWidget(self.dev_count_widget)
+        stats_layout.addWidget(self.office_count_widget)
+        stats_layout.addWidget(self.media_count_widget)
+        stats_layout.addWidget(self.data_count_widget)
+        
+        main_layout.addWidget(stats_scroll)
 
         main_layout.addStretch()
 
@@ -173,7 +207,12 @@ class MainWindow(QMainWindow):
             ("鼠标工具", "模拟鼠标点击，支持\n自定义坐标和频率", resource_path("鼠标.png"), self.open_mouse_tools),
             ("文本工具", "文本编码转换、查找替换、\n分割合并、统计分析", resource_path("文本.png"), self.open_text_tools),
             ("系统工具", "文件重命名、重复文件查找、\n目录比较、系统清理", resource_path("系统.png"), self.open_system_tools),
-            ("网络工具", "二维码生成、URL测试、\n端口扫描、HTTP服务器", resource_path("网络.png"), self.open_network_tools)
+            ("网络工具", "二维码生成、URL测试、\n端口扫描、HTTP服务器", resource_path("网络.png"), self.open_network_tools),
+            ("加密解密", "文件加密解密、哈希计算、\n密码生成器", resource_path("加密.png"), self.open_crypto_tools),
+            ("开发工具", "JSON/XML格式化、URL编码、\n正则表达式、颜色工具", resource_path("开发.png"), self.open_dev_tools),
+            ("办公效率", "Excel处理、批量重命名、\n文件监控、剪贴板管理", resource_path("办公.png"), self.open_office_tools),
+            ("媒体增强", "屏幕截图、GIF制作、\n条形码生成、图片拼贴", resource_path("媒体.png"), self.open_media_tools),
+            ("数据分析", "CSV分析、数据清理、\n日志分析、数据透视", resource_path("数据.png"), self.open_data_tools)
         ]
 
         # Clear existing widgets
@@ -181,7 +220,14 @@ class MainWindow(QMainWindow):
             self.tools_grid.itemAt(i).widget().setParent(None)
 
         num_tools = len(tools)
-        max_rows = 2  # 保持原本的2行设计
+        # 根据工具数量自适应行列数
+        if num_tools <= 8:
+            max_rows = 2
+        elif num_tools <= 12:
+            max_rows = 3
+        else:
+            max_rows = 4
+        
         num_columns = (num_tools + max_rows - 1) // max_rows  # 向上取整计算需要的列数
 
         for i in range(num_columns):
@@ -307,6 +353,51 @@ class MainWindow(QMainWindow):
     def increment_mouse_count(self):
         self.mouse_count = self.data_manager.increment_tool_count('mouse_count')
         self.mouse_count_widget.findChild(QLabel, "statCount").setText(str(self.mouse_count))
+    
+    def open_crypto_tools(self):
+        self.crypto_window = CryptoWindow()
+        self.crypto_window.operation_successful.connect(self.increment_crypto_count)
+        self.crypto_window.show()
+    
+    def open_dev_tools(self):
+        self.dev_window = DevWindow()
+        self.dev_window.operation_successful.connect(self.increment_dev_count)
+        self.dev_window.show()
+    
+    def open_office_tools(self):
+        self.office_window = OfficeWindow()
+        self.office_window.operation_successful.connect(self.increment_office_count)
+        self.office_window.show()
+    
+    def open_media_tools(self):
+        self.media_window = MediaWindow()
+        self.media_window.operation_successful.connect(self.increment_media_count)
+        self.media_window.show()
+    
+    def open_data_tools(self):
+        self.data_window = DataWindow()
+        self.data_window.operation_successful.connect(self.increment_data_count)
+        self.data_window.show()
+    
+    def increment_crypto_count(self):
+        self.crypto_count = self.data_manager.increment_tool_count('crypto_count')
+        self.crypto_count_widget.findChild(QLabel, "statCount").setText(str(self.crypto_count))
+    
+    def increment_dev_count(self):
+        self.dev_count = self.data_manager.increment_tool_count('dev_count')
+        self.dev_count_widget.findChild(QLabel, "statCount").setText(str(self.dev_count))
+    
+    def increment_office_count(self):
+        self.office_count = self.data_manager.increment_tool_count('office_count')
+        self.office_count_widget.findChild(QLabel, "statCount").setText(str(self.office_count))
+    
+    def increment_media_count(self):
+        self.media_count = self.data_manager.increment_tool_count('media_count')
+        self.media_count_widget.findChild(QLabel, "statCount").setText(str(self.media_count))
+    
+    def increment_data_count(self):
+        self.data_count = self.data_manager.increment_tool_count('data_count')
+        self.data_count_widget.findChild(QLabel, "statCount").setText(str(self.data_count))
 
     def show_message(self, message, title="提示"):
         msg_box = QMessageBox(self)

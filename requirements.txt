@@ -12,3 +12,12 @@ semver
 pynput
 qrcode[pil]
 psutil
+cryptography
+openpyxl
+pandas
+numpy
+matplotlib
+seaborn
+watchdog
+pyperclip
+python-barcode[images]
