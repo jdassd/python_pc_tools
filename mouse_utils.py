@@ -4,12 +4,13 @@ from pynput.mouse import Button, Controller
 from pynput import keyboard
 
 class Clicker(threading.Thread):
-    def __init__(self, interval, button, x=None, y=None):
+    def __init__(self, interval, button, x=None, y=None, dynamic_coords=False):
         super().__init__()
         self.interval = interval
         self.button = button
         self.x = x
         self.y = y
+        self.dynamic_coords = dynamic_coords
         self.running = False
         self.daemon = True
         self.mouse = Controller()
@@ -17,9 +18,15 @@ class Clicker(threading.Thread):
     def run(self):
         self.running = True
         while self.running:
-            if self.x is not None and self.y is not None:
+            if self.dynamic_coords:
+                # 每次点击前获取当前鼠标位置
+                current_pos = self.mouse.position
+                self.mouse.click(self.button)
+            elif self.x is not None and self.y is not None:
                 self.mouse.position = (self.x, self.y)
-            self.mouse.click(self.button)
+                self.mouse.click(self.button)
+            else:
+                self.mouse.click(self.button)
             time.sleep(self.interval)
 
     def stop(self):

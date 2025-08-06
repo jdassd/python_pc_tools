@@ -124,7 +124,7 @@ class MouseWindow(QWidget):
                 if interval < 0.001:
                     raise ValueError("自定义间隔不能小于0.001")
             else:
-                interval = float(freq_text.split('秒'))
+                interval = float(freq_text.split('秒')[0])
         except ValueError as e:
             self.update_status_signal.emit(f"错误: 无效的频率 - {e}")
             return
@@ -133,19 +133,16 @@ class MouseWindow(QWidget):
         button = MouseButton.left if self.mouse_button_combo.currentText() == "左键" else MouseButton.right
 
         # Get Coordinates
-        x, y = None, None
         if self.manual_mode_radio.isChecked():
             try:
                 x = int(self.x_input.text())
                 y = int(self.y_input.text())
+                self.clicker_thread = Clicker(interval, button, x, y, dynamic_coords=False)
             except ValueError:
                 self.update_status_signal.emit("错误: 无效的坐标")
                 return
-        else: # Auto mode
-            x, y = self.mouse_controller.position
-
-
-        self.clicker_thread = Clicker(interval, button, x, y)
+        else: # Auto mode - 动态获取坐标
+            self.clicker_thread = Clicker(interval, button, dynamic_coords=True)
         self.clicker_thread.start()
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
