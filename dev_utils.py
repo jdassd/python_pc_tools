@@ -55,7 +55,7 @@ def validate_xml(xml_text: str) -> tuple[bool, str]:
         ET.fromstring(xml_text)
         return True, "XML格式正确"
     except ET.ParseError as e:
-        return False, f"XML格式错误: {str(e)}")
+        return False, f"XML格式错误: {str(e)}"
 
 def url_encode(text: str) -> str:
     """URL编码"""

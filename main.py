@@ -67,8 +67,8 @@ class AdaptiveToolButton(QPushButton):
         self.icon_label.setPixmap(pixmap.scaled(QSize(icon_size, icon_size), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
         # --- Font Resizing ---
-        title_font_size = max(int(button_height * 0.12), 8) # Title font size is 12% of height, min 8px
-        desc_font_size = max(int(button_height * 0.09), 8) # Desc font size is 9% of height, min 8px
+        title_font_size = max(int(button_height * 0.08), 10) # 减小标题字体比例，最小10px
+        desc_font_size = max(int(button_height * 0.06), 8) # 减小描述字体比例，最小8px
 
         title_font = self.title_label.font()
         title_font.setPixelSize(title_font_size)
@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"多功能工具箱 v{__version__}")
-        self.setMinimumSize(600, 620) # 设置一个合理的最小尺寸
+        self.setMinimumSize(600, 700) # 设置一个合理的最小尺寸
         self.setWindowIcon(QIcon(resource_path('工具箱.png')))
 
         # 初始化数据管理器
@@ -146,11 +146,6 @@ class MainWindow(QMainWindow):
         self.setup_tools_grid()
 
         # Stats
-        stats_frame = QFrame()
-        stats_frame.setObjectName("statsFrame")
-        stats_layout = QHBoxLayout(stats_frame)
-        stats_layout.setSpacing(20)
-        main_layout.addWidget(stats_frame)
 
         self.pdf_count_widget = self.create_stat_label(str(self.pdf_count), "PDF处理次数")
         self.image_count_widget = self.create_stat_label(str(self.image_count), "图片处理次数")
@@ -166,33 +161,51 @@ class MainWindow(QMainWindow):
         self.media_count_widget = self.create_stat_label(str(getattr(self, 'media_count', 0)), "媒体增强次数")
         self.data_count_widget = self.create_stat_label(str(getattr(self, 'data_count', 0)), "数据分析次数")
 
-        # 使用滚动区域来显示所有统计
-        from PyQt6.QtWidgets import QScrollArea
-        stats_scroll = QScrollArea()
-        stats_scroll.setWidgetResizable(True)
-        stats_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        stats_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        stats_scroll.setMaximumHeight(60)
+        # 使用固定高度的统计展示区域，支持换行布局
+        stats_frame = QFrame()
+        stats_frame.setObjectName("statsFrame")
+        # stats_frame.setFixedHeight(120)  # 移除固定高度，使其自适应
         
-        stats_container = QWidget()
-        stats_scroll.setWidget(stats_container)
-        stats_layout = QHBoxLayout(stats_container)
+        # 使用网格布局来显示统计数据，支持两行显示
+        stats_grid_layout = QGridLayout(stats_frame)
+        stats_grid_layout.setSpacing(15)
+        stats_grid_layout.setContentsMargins(15, 15, 15, 15)
         
-        stats_layout.addWidget(self.pdf_count_widget)
-        stats_layout.addWidget(self.image_count_widget)
-        stats_layout.addWidget(self.audio_count_widget)
-        stats_layout.addWidget(self.video_count_widget)
-        stats_layout.addWidget(self.mouse_count_widget)
-        stats_layout.addWidget(self.text_count_widget)
-        stats_layout.addWidget(self.system_count_widget)
-        stats_layout.addWidget(self.network_count_widget)
-        stats_layout.addWidget(self.crypto_count_widget)
-        stats_layout.addWidget(self.dev_count_widget)
-        stats_layout.addWidget(self.office_count_widget)
-        stats_layout.addWidget(self.media_count_widget)
-        stats_layout.addWidget(self.data_count_widget)
+        # 统计项列表
+        stats_items = [
+            (self.pdf_count_widget, "PDF处理次数"),
+            (self.image_count_widget, "图片处理次数"),
+            (self.audio_count_widget, "音频处理次数"),
+            (self.video_count_widget, "视频处理次数"),
+            (self.mouse_count_widget, "鼠标点击次数"),
+            (self.text_count_widget, "文本处理次数"),
+            (self.system_count_widget, "系统工具次数"),
+            (self.network_count_widget, "网络工具次数"),
+            (self.crypto_count_widget, "加密解密次数"),
+            (self.dev_count_widget, "开发工具次数"),
+            (self.office_count_widget, "办公效率次数"),
+            (self.media_count_widget, "媒体增强次数"),
+            (self.data_count_widget, "数据分析次数")
+        ]
         
-        main_layout.addWidget(stats_scroll)
+        # 分两行显示：第一行7个，第二行6个
+        cols_per_row = 7
+        for idx, (widget, _) in enumerate(stats_items):
+            row = idx // cols_per_row
+            col = idx % cols_per_row
+            
+            # 如果是第二行且只有6个元素，居中显示
+            stats_grid_layout.addWidget(widget, row, col)
+
+        # 为第二行添加伸缩因子，使其居中
+        if len(stats_items) > cols_per_row:
+            remaining_items = len(stats_items) % cols_per_row
+            if remaining_items > 0:
+                # 添加前置和后置伸缩因子
+                stats_grid_layout.setColumnStretch(cols_per_row - 1, 1) # 确保最后一列有伸缩
+                stats_grid_layout.setColumnStretch(0, 1)
+        
+        main_layout.addWidget(stats_frame)
 
         main_layout.addStretch()
 
@@ -220,24 +233,18 @@ class MainWindow(QMainWindow):
             self.tools_grid.itemAt(i).widget().setParent(None)
 
         num_tools = len(tools)
-        # 根据工具数量自适应行列数
-        if num_tools <= 8:
-            max_rows = 2
-        elif num_tools <= 12:
-            max_rows = 3
-        else:
-            max_rows = 4
+        # 固定4列布局，根据工具数量计算行数
+        num_columns = 4
+        num_rows = (num_tools + num_columns - 1) // num_columns  # 向上取整计算需要的行数
         
-        num_columns = (num_tools + max_rows - 1) // max_rows  # 向上取整计算需要的列数
-
         for i in range(num_columns):
             self.tools_grid.setColumnStretch(i, 1)
-        for i in range(max_rows):
+        for i in range(num_rows):
             self.tools_grid.setRowStretch(i, 1)
 
         for idx, (title, desc, icon, callback) in enumerate(tools):
-            row = idx % max_rows
-            col = idx // max_rows
+            row = idx // num_columns  # 按行优先排列
+            col = idx % num_columns
             button = self.create_tool_button(title, desc, icon, callback)
             self.tools_grid.addWidget(button, row, col)
 
@@ -410,7 +417,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    with open(resource_path("styles.qss"), "r") as f:
+    with open(resource_path("styles.qss"), "r", encoding="utf-8") as f:
         app.setStyleSheet(f.read())
     window = MainWindow()
     window.show()

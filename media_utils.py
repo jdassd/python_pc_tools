@@ -4,7 +4,7 @@ from datetime import datetime
 from PIL import Image, ImageGrab, ImageDraw, ImageFont
 import barcode
 from barcode.writer import ImageWriter
-from barcode import Code128, Code39, EAN13, EAN8, UPC
+from barcode import Code128, Code39, EAN13, EAN8, UPCA
 import io
 import tempfile
 from pathlib import Path
@@ -188,7 +188,7 @@ def generate_barcode(data, barcode_type='code128', output_path=None, **kwargs):
         'code39': Code39,
         'ean13': EAN13,
         'ean8': EAN8,
-        'upc': UPC,
+        'upc': UPCA,
     }
     
     if barcode_type.lower() not in barcode_classes:

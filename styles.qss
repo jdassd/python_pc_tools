@@ -47,17 +47,18 @@ QMainWindow {
 #statsFrame {
     background-color: white;
     border-radius: 15px;
-    padding: 15px;
+    padding: 10px; /* 减小内边距 */
+    min-height: 80px; /* 设置最小高度 */
 }
 
 #statCount {
-    font-size: 28px;
+    font-size: 22px; /* 减小字体大小 */
     font-weight: bold;
     color: #6a11cb;
 }
 
 #statText {
-    font-size: 14px;
+    font-size: 12px; /* 减小字体大小 */
     color: #555;
 }
 
