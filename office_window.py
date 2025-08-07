@@ -17,6 +17,7 @@ class OfficeWorker(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
     status_update = pyqtSignal(str)
+    analysis_result = pyqtSignal(dict)
     
     def __init__(self, operation, **kwargs):
         super().__init__()
@@ -70,9 +71,8 @@ class OfficeWorker(QThread):
                 result = office_utils.analyze_directory_structure(
                     self.kwargs['directory']
                 )
+                self.analysis_result.emit(result)
                 self.finished.emit("目录分析完成")
-                # 通过信号传递结果数据
-                self.kwargs['callback'](result)
                 
         except Exception as e:
             self.error.emit(str(e))
@@ -1052,11 +1052,11 @@ class OfficeWindow(QMainWindow):
         
         self.office_worker = OfficeWorker(
             "analyze_directory",
-            directory=directory,
-            callback=self.display_analysis_result
+            directory=directory
         )
         self.office_worker.finished.connect(self.on_office_finished)
         self.office_worker.error.connect(self.on_office_error)
+        self.office_worker.analysis_result.connect(self.display_analysis_result)
         self.office_worker.start()
     
     def display_analysis_result(self, result):
