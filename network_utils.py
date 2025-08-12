@@ -137,21 +137,21 @@ class SimpleHTTPServer:
     
     def start(self):
         try:
-            import os
-            os.chdir(self.directory)
-            
-            class CustomHandler(http.server.SimpleHTTPRequestHandler):
-                def __init__(self, *args, **kwargs):
-                    super().__init__(*args, directory=self.directory, **kwargs)
-            
-            self.server = socketserver.TCPServer(("", self.port), CustomHandler)
-            self.server_thread = threading.Thread(target=self.server.serve_forever)
-            self.server_thread.daemon = True
+            from functools import partial
+
+            # 使用 partial 绑定目录，避免全局 chdir，且不在 handler 中错误引用 self
+            handler = partial(http.server.SimpleHTTPRequestHandler, directory=self.directory)
+
+            class ReusableTCPServer(socketserver.TCPServer):
+                allow_reuse_address = True
+
+            self.server = ReusableTCPServer(("", self.port), handler)
+            self.server_thread = threading.Thread(target=self.server.serve_forever, daemon=True)
             self.server_thread.start()
             self.running = True
-            
+
             return f"http://localhost:{self.port}", None
-            
+
         except Exception as e:
             return None, str(e)
     
@@ -161,6 +161,10 @@ class SimpleHTTPServer:
                 self.server.shutdown()
                 self.server.server_close()
                 self.running = False
+            if self.server_thread and self.server_thread.is_alive():
+                self.server_thread.join(timeout=2)
+            self.server = None
+            self.server_thread = None
             return True, None
         except Exception as e:
             return False, str(e)

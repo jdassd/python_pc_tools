@@ -148,6 +148,7 @@ class MouseWindow(QWidget):
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
         self.update_status_signal.emit("状态: 运行中...")
+        self.operation_successful.emit()
 
     def stop_clicker(self):
         if self.clicker_thread and self.clicker_thread.is_alive():

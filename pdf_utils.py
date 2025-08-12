@@ -11,13 +11,14 @@ def pdf_to_images(pdf_path, output_folder):
         os.makedirs(output_folder)
     
     doc = fitz.open(pdf_path)
-    for page_index in range(len(doc)):
+    page_count = len(doc)
+    for page_index in range(page_count):
         page = doc[page_index]
         pix = page.get_pixmap()
         output_path = os.path.join(output_folder, f"page_{page_index + 1}.png")
         pix.save(output_path)
     doc.close()
-    return f"Successfully converted {len(doc)} pages to images in {output_folder}"
+    return f"Successfully converted {page_count} pages to images in {output_folder}"
 
 def merge_pdfs(pdf_files, output_path):
     """

@@ -80,6 +80,7 @@ class AdaptiveToolButton(QPushButton):
 
 class UpdateCheckWorker(QObject):
     update_found = pyqtSignal(dict)
+    finished = pyqtSignal()
 
     def __init__(self, current_version):
         super().__init__()
@@ -90,6 +91,7 @@ class UpdateCheckWorker(QObject):
         latest_release = check_for_updates(self.current_version)
         if latest_release:
             self.update_found.emit(latest_release)
+        self.finished.emit()
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -155,11 +157,11 @@ class MainWindow(QMainWindow):
         self.text_count_widget = self.create_stat_label(str(self.text_count), "文本处理次数")
         self.system_count_widget = self.create_stat_label(str(self.system_count), "系统工具次数")
         self.network_count_widget = self.create_stat_label(str(self.network_count), "网络工具次数")
-        self.crypto_count_widget = self.create_stat_label(str(getattr(self, 'crypto_count', 0)), "加密解密次数")
-        self.dev_count_widget = self.create_stat_label(str(getattr(self, 'dev_count', 0)), "开发工具次数")
-        self.office_count_widget = self.create_stat_label(str(getattr(self, 'office_count', 0)), "办公效率次数")
-        self.media_count_widget = self.create_stat_label(str(getattr(self, 'media_count', 0)), "媒体增强次数")
-        self.data_count_widget = self.create_stat_label(str(getattr(self, 'data_count', 0)), "数据分析次数")
+        self.crypto_count_widget = self.create_stat_label(str(self.crypto_count), "加密解密次数")
+        self.dev_count_widget = self.create_stat_label(str(self.dev_count), "开发工具次数")
+        self.office_count_widget = self.create_stat_label(str(self.office_count), "办公效率次数")
+        self.media_count_widget = self.create_stat_label(str(self.media_count), "媒体增强次数")
+        self.data_count_widget = self.create_stat_label(str(self.data_count), "数据分析次数")
 
         # 使用固定高度的统计展示区域，支持换行布局
         stats_frame = QFrame()
@@ -257,8 +259,8 @@ class MainWindow(QMainWindow):
         self.update_thread.started.connect(self.update_worker.run)
         self.update_worker.update_found.connect(self.show_update_dialog)
         
-        # Clean up the thread when the worker is done
-        self.update_worker.update_found.connect(self.update_thread.quit)
+        # Ensure thread exits regardless of update result
+        self.update_worker.finished.connect(self.update_thread.quit)
         self.update_thread.finished.connect(self.update_worker.deleteLater)
         self.update_thread.finished.connect(self.update_thread.deleteLater)
 

@@ -18,7 +18,12 @@ class DataManager:
         "mouse_count": 0,
         "text_count": 0,
         "system_count": 0,
-        "network_count": 0
+        "network_count": 0,
+        "crypto_count": 0,
+        "dev_count": 0,
+        "office_count": 0,
+        "media_count": 0,
+        "data_count": 0
     }
     
     def __init__(self):

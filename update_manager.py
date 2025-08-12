@@ -66,28 +66,52 @@ class UpdateDownloader(QObject):
 
 def download_and_install_update(release_info, parent=None):
     """
-    下载并安装更新。
+    下载并安装更新（支持压缩包与安装器）。
     """
-    asset = release_info['assets'][0] # 假设第一个asset是更新包
-    download_url = asset['browser_download_url']
-    file_name = asset['name']
-    
-    reply = QMessageBox.question(parent, '发现新版本',
-                                 f"发现新版本 {release_info['tag_name']}。\n\n更新日志:\n{release_info['body']}\n\n是否立即下载并更新？",
-                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                 QMessageBox.StandardButton.No)
+    assets = release_info.get('assets', [])
+    if not assets:
+        QMessageBox.information(parent, "无可用更新包", "发布版本未提供可下载的更新资产。")
+        return
+
+    # 优先选择压缩包，其次安装器，最后回退第一个资产
+    selected = None
+    for a in assets:
+        name = a.get('name', '').lower()
+        if name.endswith(('.zip', '.tar.gz', '.tar', '.tgz')):
+            selected = a
+            break
+    if not selected:
+        for a in assets:
+            name = a.get('name', '').lower()
+            if name.endswith('.exe'):
+                selected = a
+                break
+    if not selected:
+        selected = assets[0]
+
+    download_url = selected['browser_download_url']
+    file_name = selected['name']
+
+    reply = QMessageBox.question(
+        parent,
+        '发现新版本',
+        f"发现新版本 {release_info.get('tag_name', '')}。\n\n更新日志:\n{release_info.get('body', '')}\n\n是否立即下载并更新？",
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No
+    )
 
     if reply == QMessageBox.StandardButton.Yes:
         progress_dialog = QProgressDialog("正在下载更新...", "取消", 0, 100, parent)
         progress_dialog.setWindowTitle("多功能工具箱")
         progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
-        
+
         thread = QThread()
         downloader = UpdateDownloader(download_url, file_name)
         downloader.moveToThread(thread)
 
         def on_finish(path):
             progress_dialog.setValue(100)
+            progress_dialog.close()
             thread.quit()
             create_update_script(path)
 
@@ -95,50 +119,76 @@ def download_and_install_update(release_info, parent=None):
             QMessageBox.critical(parent, "下载失败", msg)
             progress_dialog.close()
             thread.quit()
-        
+
         def on_cancel():
             downloader.cancel()
+            progress_dialog.close()
             thread.quit()
 
         downloader.progress.connect(progress_dialog.setValue)
         downloader.finished.connect(on_finish)
         downloader.error.connect(on_error)
-        
         progress_dialog.canceled.connect(on_cancel)
 
         thread.started.connect(downloader.run)
+        thread.finished.connect(downloader.deleteLater)
         thread.finished.connect(thread.deleteLater)
-        
+
         thread.start()
         progress_dialog.exec()
 
 def create_update_script(download_path):
     """
-    创建并执行用于安装更新的批处理脚本。
+    创建并执行用于安装更新的批处理脚本：
+    - 压缩包：解压替换后重启应用
+    - 安装器(.exe)：直接启动安装器
     """
-    script_content = f"""
+    lower = download_path.lower()
+    is_archive = lower.endswith(('.zip', '.tar', '.tgz')) or lower.endswith('.tar.gz')
+    is_installer = lower.endswith('.exe')
+
+    if is_installer:
+        script_content = f"""
 @echo off
 chcp 65001 > NUL
-echo "正在准备更新，请稍候..."
-timeout /t 5 /nobreak > NUL
+echo 正在准备安装，请稍候...
+timeout /t 2 /nobreak > NUL
 
-echo "正在关闭当前应用..."
+echo 正在关闭当前应用...
 taskkill /f /im 工具箱.exe > NUL
 
-echo "正在解压并替换文件..."
+echo 正在启动安装程序...
+start "" "{download_path}"
+
+echo 安装程序已启动，本程序将退出。
+del "%~f0"
+"""
+    else:
+        # 归档包使用 tar 解压（Windows 10+ 内置 bsdtar 兼容 zip/tar）
+        script_content = f"""
+@echo off
+chcp 65001 > NUL
+echo 正在准备更新，请稍候...
+timeout /t 2 /nobreak > NUL
+
+echo 正在关闭当前应用...
+taskkill /f /im 工具箱.exe > NUL
+
+echo 正在解压并替换文件...
 tar -xf "{download_path}" -C "."
 
-echo "清理临时文件..."
+echo 清理临时文件...
 del "{download_path}"
 
-echo "更新完成，正在重启应用..."
+echo 更新完成，正在重启应用...
 start "" "工具箱.exe"
 
 del "%~f0"
 """
+
     script_path = os.path.join(os.getcwd(), "update.bat")
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(script_content)
-        
+
     subprocess.Popen(f'cmd /c "{script_path}"', shell=True)
     QApplication.quit()
