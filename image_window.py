@@ -1,10 +1,10 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLineEdit,
                              QGridLayout, QGroupBox, QFileDialog, QMessageBox,
-                             QComboBox, QLabel)
+                             QComboBox, QLabel, QCheckBox, QSpinBox)
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import pyqtSignal
 from image_utils import (convert_image_format, resize_image,
-                         crop_image, add_watermark)
+                         crop_image, add_watermark, images_to_word)
 from utils import resource_path
 
 class ImageWindow(QWidget):
@@ -83,6 +83,37 @@ class ImageWindow(QWidget):
         crop_run_btn.clicked.connect(self.run_crop_image)
         crop_layout.addWidget(crop_run_btn, 2, 2)
         main_layout.addWidget(crop_group)
+
+        # Images to Word Group
+        word_group = QGroupBox("图片转Word")
+        word_layout = QGridLayout(word_group)
+        self.images_input = QLineEdit()
+        self.images_input.setPlaceholderText("选择图片文件(可多选)")
+        word_layout.addWidget(self.images_input, 0, 0, 1, 2)
+        images_btn = QPushButton("选择图片")
+        images_btn.setObjectName("selectFileButton")
+        images_btn.clicked.connect(self.select_multiple_images)
+        word_layout.addWidget(images_btn, 0, 2)
+        
+        self.word_file_input = QLineEdit()
+        self.word_file_input.setPlaceholderText("选择Word文件(可选，留空则创建新文件)")
+        word_layout.addWidget(self.word_file_input, 1, 0, 1, 2)
+        word_file_btn = QPushButton("选择Word")
+        word_file_btn.setObjectName("selectFileButton")
+        word_file_btn.clicked.connect(self.select_word_file)
+        word_layout.addWidget(word_file_btn, 1, 2)
+        
+        self.start_page_input = QSpinBox()
+        self.start_page_input.setMinimum(1)
+        self.start_page_input.setMaximum(999)
+        self.start_page_input.setValue(1)
+        word_layout.addWidget(QLabel("开始插入页码:"), 2, 0)
+        word_layout.addWidget(self.start_page_input, 2, 1)
+        
+        word_run_btn = QPushButton("转换")
+        word_run_btn.clicked.connect(self.run_images_to_word)
+        word_layout.addWidget(word_run_btn, 2, 2)
+        main_layout.addWidget(word_group)
         
         main_layout.addStretch()
 
@@ -90,6 +121,26 @@ class ImageWindow(QWidget):
         file_name, _ = QFileDialog.getOpenFileName(self, "选择文件")
         if file_name:
             line_edit.setText(file_name)
+
+    def select_multiple_images(self):
+        file_names, _ = QFileDialog.getOpenFileNames(
+            self, 
+            "选择图片文件", 
+            "", 
+            "图片文件 (*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.webp)"
+        )
+        if file_names:
+            self.images_input.setText("; ".join(file_names))
+
+    def select_word_file(self):
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, 
+            "选择Word文件", 
+            "", 
+            "Word文件 (*.docx)"
+        )
+        if file_name:
+            self.word_file_input.setText(file_name)
 
     def run_convert_image(self):
         input_path = self.convert_input.text()
@@ -135,6 +186,33 @@ class ImageWindow(QWidget):
             self.show_message(result)
             if "Successfully" in result:
                 self.operation_successful.emit()
+
+    def run_images_to_word(self):
+        images_text = self.images_input.text()
+        if not images_text:
+            self.show_message("请选择至少一个图片文件。", "错误")
+            return
+        
+        image_paths = [path.strip() for path in images_text.split(";")]
+        word_file = self.word_file_input.text().strip() or None
+        start_page = self.start_page_input.value()
+        
+        if word_file:
+            output_path = word_file
+        else:
+            output_path, _ = QFileDialog.getSaveFileName(
+                self, 
+                "保存Word文件", 
+                "images_to_word.docx", 
+                "Word文件 (*.docx)"
+            )
+            if not output_path:
+                return
+        
+        result = images_to_word(image_paths, output_path, word_file, start_page)
+        self.show_message(result)
+        if "成功" in result:
+            self.operation_successful.emit()
 
     def show_message(self, message, title="提示"):
         msg_box = QMessageBox(self)

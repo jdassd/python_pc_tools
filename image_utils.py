@@ -1,5 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps, ImageFilter
 from PIL.ExifTags import TAGS
+from docx import Document
+from docx.shared import Inches
 import os
 import time
 
@@ -304,3 +306,74 @@ def batch_process_images(directory, operation, **kwargs):
         
     except Exception as e:
         return None, str(e)
+
+def images_to_word(image_paths, output_path, existing_word_file=None, start_page=1):
+    """将图片插入Word文档"""
+    try:
+        if existing_word_file and os.path.exists(existing_word_file):
+            doc = Document(existing_word_file)
+            is_new_file = False
+        else:
+            doc = Document()
+            is_new_file = True
+        
+        # 如果需要从指定页开始插入且不是新文件
+        if not is_new_file and start_page > 1:
+            # 计算现有页数
+            existing_pages = len(doc.paragraphs) // 10 + 1  # 粗略估算
+            if existing_pages < start_page:
+                # 添加分页符直到到达指定页
+                for _ in range(start_page - existing_pages):
+                    doc.add_page_break()
+            else:
+                # 在现有内容后添加分页符
+                doc.add_page_break()
+        
+        for i, image_path in enumerate(image_paths):
+            if not os.path.exists(image_path):
+                continue
+            
+            try:
+                # 获取图片尺寸并保持比例
+                with Image.open(image_path) as img:
+                    img_width, img_height = img.size
+                    aspect_ratio = img_width / img_height
+                    
+                    # 设置最大尺寸限制（Word页面可用空间）
+                    max_width = 6.0  # inches
+                    max_height = 8.0  # inches
+                    
+                    # 根据比例计算合适的尺寸
+                    if aspect_ratio > max_width / max_height:
+                        # 图片较宽，以宽度为准
+                        width_inch = min(max_width, img_width / 100.0)
+                        height_inch = width_inch / aspect_ratio
+                    else:
+                        # 图片较高，以高度为准
+                        height_inch = min(max_height, img_height / 100.0)
+                        width_inch = height_inch * aspect_ratio
+                
+                # 如果不是第一张图片，添加分页符
+                if i > 0:
+                    doc.add_page_break()
+                
+                # 添加图片到新的段落
+                paragraph = doc.add_paragraph()
+                run = paragraph.add_run()
+                run.add_picture(image_path, width=Inches(width_inch), height=Inches(height_inch))
+                
+            except Exception as img_error:
+                # 如果图片插入失败，添加错误信息
+                if i > 0:
+                    doc.add_page_break()
+                doc.add_paragraph(f"无法插入图片: {os.path.basename(image_path)} - {str(img_error)}")
+        
+        doc.save(output_path)
+        
+        if existing_word_file and output_path == existing_word_file:
+            return f"成功将{len(image_paths)}张图片插入到现有Word文档，从第{start_page}页开始"
+        else:
+            return f"成功创建Word文档，包含{len(image_paths)}张图片"
+        
+    except Exception as e:
+        return f"创建Word文档时出错: {str(e)}"
