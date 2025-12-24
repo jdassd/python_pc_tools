@@ -39,6 +39,8 @@ def batch_find_replace(text, find_replace_pairs, use_regex=False, case_sensitive
                     result_text = re.sub(pattern, replace_str, result_text, flags=re.IGNORECASE)
         
         return result_text, None
+    except re.error as e:
+        return None, f"正则表达式错误: {e}"
     except Exception as e:
         return None, str(e)
 
@@ -47,6 +49,8 @@ def split_text(text, split_method, split_value):
     try:
         if split_method == "lines":
             lines_per_chunk = int(split_value)
+            if lines_per_chunk <= 0:
+                return None, "每份行数必须大于0"
             lines = text.split('\n')
             chunks = []
             for i in range(0, len(lines), lines_per_chunk):
@@ -56,6 +60,8 @@ def split_text(text, split_method, split_value):
             
         elif split_method == "chars":
             chars_per_chunk = int(split_value)
+            if chars_per_chunk <= 0:
+                return None, "每份字符数必须大于0"
             chunks = []
             for i in range(0, len(text), chars_per_chunk):
                 chunks.append(text[i:i + chars_per_chunk])
@@ -63,12 +69,15 @@ def split_text(text, split_method, split_value):
             
         elif split_method == "delimiter":
             delimiter = split_value
+            if not delimiter:
+                return None, "分隔符不能为空"
             chunks = text.split(delimiter)
             return chunks, None
             
         else:
             return None, "不支持的分割方法"
-            
+    except ValueError:
+        return None, "分割值必须为整数"
     except Exception as e:
         return None, str(e)
 
@@ -76,6 +85,58 @@ def merge_texts(text_list, separator="\n"):
     """文本合并"""
     try:
         return separator.join(text_list), None
+    except Exception as e:
+        return None, str(e)
+
+def clean_text(
+    text,
+    remove_empty_lines=False,
+    strip_whitespace=False,
+    collapse_spaces=False,
+    dedupe_lines=False,
+    ignore_case=False,
+    sort_lines=None,
+):
+    """文本清洗"""
+    try:
+        if not any(
+            [
+                remove_empty_lines,
+                strip_whitespace,
+                collapse_spaces,
+                dedupe_lines,
+                sort_lines,
+            ]
+        ):
+            return None, "请至少选择一项清洗规则"
+
+        lines = text.splitlines()
+        processed_lines = []
+        seen = set()
+
+        for line in lines:
+            current_line = line
+            if strip_whitespace:
+                current_line = current_line.strip()
+            if collapse_spaces:
+                current_line = re.sub(r"\s+", " ", current_line).strip()
+
+            if remove_empty_lines and not current_line.strip():
+                continue
+
+            if dedupe_lines:
+                key = current_line.lower() if ignore_case else current_line
+                if key in seen:
+                    continue
+                seen.add(key)
+
+            processed_lines.append(current_line)
+
+        if sort_lines:
+            reverse = sort_lines == "desc"
+            processed_lines = sorted(processed_lines, reverse=reverse)
+
+        return "\n".join(processed_lines), None
     except Exception as e:
         return None, str(e)
 
@@ -123,11 +184,20 @@ def analyze_text(text):
 def process_text_file(file_path, operation, **kwargs):
     """处理文本文件"""
     try:
+        if not os.path.exists(file_path):
+            return None, f"未找到文件: {file_path}"
+        if not os.path.isfile(file_path):
+            return None, f"路径不是文件: {file_path}"
+
         # 检测文件编码
-        encoding = detect_file_encoding(file_path)
-        
-        with open(file_path, 'r', encoding=encoding) as f:
-            content = f.read()
+        source_encoding = kwargs.get("source_encoding")
+        encoding = source_encoding or detect_file_encoding(file_path)
+
+        try:
+            with open(file_path, 'r', encoding=encoding) as f:
+                content = f.read()
+        except UnicodeDecodeError as e:
+            return None, f"读取文件失败，可能是编码不匹配: {e}"
         
         if operation == "convert_encoding":
             result, error = convert_encoding(content, encoding, kwargs['target_encoding'])
@@ -171,6 +241,26 @@ def process_text_file(file_path, operation, **kwargs):
                 output_files.append(output_path)
             return output_files, None
             
+        elif operation == "clean":
+            result, error = clean_text(
+                content,
+                remove_empty_lines=kwargs.get("remove_empty_lines", False),
+                strip_whitespace=kwargs.get("strip_whitespace", False),
+                collapse_spaces=kwargs.get("collapse_spaces", False),
+                dedupe_lines=kwargs.get("dedupe_lines", False),
+                ignore_case=kwargs.get("ignore_case", False),
+                sort_lines=kwargs.get("sort_lines"),
+            )
+            if error:
+                return None, error
+
+            output_path = kwargs.get(
+                "output_path", file_path.replace('.txt', '_cleaned.txt')
+            )
+            with open(output_path, 'w', encoding=encoding) as f:
+                f.write(result)
+            return output_path, None
+
         elif operation == "analyze":
             result, error = analyze_text(content)
             return result, error
@@ -206,9 +296,15 @@ def detect_file_encoding(file_path):
 def merge_text_files(file_paths, output_path, separator="\n"):
     """合并多个文本文件"""
     try:
+        if not file_paths:
+            return None, "请至少选择一个文件进行合并"
         merged_content = []
         
         for file_path in file_paths:
+            if not os.path.exists(file_path):
+                return None, f"未找到文件: {file_path}"
+            if not os.path.isfile(file_path):
+                return None, f"路径不是文件: {file_path}"
             encoding = detect_file_encoding(file_path)
             with open(file_path, 'r', encoding=encoding) as f:
                 content = f.read()
