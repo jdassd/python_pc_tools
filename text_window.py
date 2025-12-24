@@ -60,6 +60,9 @@ class TextWindow(QWidget):
         # 文本分析标签页
         self.setup_analysis_tab()
 
+        # 文本清洗标签页
+        self.setup_clean_tab()
+
     def setup_encoding_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
@@ -260,6 +263,59 @@ class TextWindow(QWidget):
         
         self.tab_widget.addTab(tab, "文本分析")
 
+    def setup_clean_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        # 文件选择组
+        file_group = QGroupBox("文件选择")
+        file_layout = QHBoxLayout(file_group)
+
+        self.clean_file_label = QLabel("未选择文件")
+        select_file_btn = QPushButton("选择文件")
+        select_file_btn.clicked.connect(self.select_clean_file)
+
+        file_layout.addWidget(QLabel("文件:"))
+        file_layout.addWidget(self.clean_file_label, 1)
+        file_layout.addWidget(select_file_btn)
+        layout.addWidget(file_group)
+
+        # 清洗规则组
+        rules_group = QGroupBox("清洗规则")
+        rules_layout = QVBoxLayout(rules_group)
+
+        self.remove_empty_lines = QCheckBox("移除空行")
+        self.strip_whitespace = QCheckBox("去除行首尾空白")
+        self.collapse_spaces = QCheckBox("合并连续空白为一个空格")
+        self.dedupe_lines = QCheckBox("去重重复行（保持原顺序）")
+        self.ignore_case = QCheckBox("去重时忽略大小写")
+        self.ignore_case.setEnabled(False)
+        self.dedupe_lines.toggled.connect(self.ignore_case.setEnabled)
+
+        rules_layout.addWidget(self.remove_empty_lines)
+        rules_layout.addWidget(self.strip_whitespace)
+        rules_layout.addWidget(self.collapse_spaces)
+        rules_layout.addWidget(self.dedupe_lines)
+        rules_layout.addWidget(self.ignore_case)
+
+        sort_layout = QHBoxLayout()
+        sort_layout.addWidget(QLabel("行排序:"))
+        self.sort_lines = QComboBox()
+        self.sort_lines.addItems(["不排序", "升序", "降序"])
+        sort_layout.addWidget(self.sort_lines)
+        sort_layout.addStretch()
+        rules_layout.addLayout(sort_layout)
+
+        layout.addWidget(rules_group)
+
+        # 执行按钮
+        execute_btn = QPushButton("开始清洗")
+        execute_btn.clicked.connect(self.clean_text_file)
+        layout.addWidget(execute_btn)
+
+        layout.addStretch()
+        self.tab_widget.addTab(tab, "文本清洗")
+
     def select_encoding_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self, "选择文本文件", "", 
@@ -306,6 +362,15 @@ class TextWindow(QWidget):
             self.analysis_file_path = file_path
             self.analysis_file_label.setText(os.path.basename(file_path))
 
+    def select_clean_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "选择文本文件", "",
+            "文本文件 (*.txt *.log *.csv *.py *.js *.html *.xml);;所有文件 (*)"
+        )
+        if file_path:
+            self.clean_file_path = file_path
+            self.clean_file_label.setText(os.path.basename(file_path))
+
     def add_replace_rule(self):
         row_count = self.replace_table.rowCount()
         self.replace_table.insertRow(row_count)
@@ -347,6 +412,7 @@ class TextWindow(QWidget):
             "process_file",
             file_path=self.encoding_file_path,
             operation="convert_encoding",
+            source_encoding=source_enc,
             target_encoding=target_enc,
             output_path=output_path
         )
@@ -458,6 +524,41 @@ class TextWindow(QWidget):
             operation="analyze"
         )
         self.worker.finished.connect(self.on_analysis_finished)
+        self.worker.start()
+
+    def clean_text_file(self):
+        if not hasattr(self, 'clean_file_path'):
+            QMessageBox.warning(self, "错误", "请先选择文件")
+            return
+
+        sort_map = {
+            "不排序": None,
+            "升序": "asc",
+            "降序": "desc",
+        }
+
+        output_path, _ = QFileDialog.getSaveFileName(
+            self, "保存清洗后的文件",
+            f"{os.path.splitext(self.clean_file_path)[0]}_cleaned.txt",
+            "文本文件 (*.txt);;所有文件 (*)"
+        )
+
+        if not output_path:
+            return
+
+        self.worker = TextProcessingWorker(
+            "process_file",
+            file_path=self.clean_file_path,
+            operation="clean",
+            remove_empty_lines=self.remove_empty_lines.isChecked(),
+            strip_whitespace=self.strip_whitespace.isChecked(),
+            collapse_spaces=self.collapse_spaces.isChecked(),
+            dedupe_lines=self.dedupe_lines.isChecked(),
+            ignore_case=self.ignore_case.isChecked(),
+            sort_lines=sort_map[self.sort_lines.currentText()],
+            output_path=output_path,
+        )
+        self.worker.finished.connect(self.on_operation_finished)
         self.worker.start()
 
     @pyqtSlot(object, str)
